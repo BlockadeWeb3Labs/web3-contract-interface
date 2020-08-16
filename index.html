@@ -96,10 +96,17 @@
 		});
 
 		var account;
-		web3.eth.requestAccounts().then(function(accounts) {
-			account = accounts[0];
-			document.getElementById('info-address').innerHTML = accounts[0];
-		});
+		web3.eth.getAccounts().then(function(accounts) {
+			if (accounts.length) {
+				account = accounts[0];
+				document.getElementById('info-address').innerHTML = account;
+			} else {
+				web3.eth.requestAccounts().then(function(accounts) {
+					account = accounts[0];
+					document.getElementById('info-address').innerHTML = account;
+				});
+			}
+		})
 
 		function sendTx() {
 			if (!account) {
@@ -146,7 +153,6 @@
 					) {
 						document.getElementById('result').innerHTML = `Calling method ${method}...`;
 						contractWeb3.methods[method](...values).call((err, res) => {
-							console.log(...arguments);
 							document.getElementById('result').innerHTML = res;
 						});
 						return;
@@ -165,7 +171,7 @@
 								document.getElementById('result').innerHTML = "<pre>" + JSON.stringify(receipt, null, 2) + "</pre>";
 							})
 							.on('error', function(error, receipt) {
-								document.getElementById('result').innerHTML = "Error -- " + err + " -- Receipt -- " + "<pre>" + JSON.stringify(receipt, null, 2) + "</pre>";
+								document.getElementById('result').innerHTML = error + "<br /><br />Receipt<br /><pre>" + JSON.stringify(receipt, null, 2) + "</pre>";
 							});
 						return;
 					}
