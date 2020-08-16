@@ -1,0 +1,15 @@
+{
+  "name": "web3-contract-interface",
+  "version": "1.0.0",
+  "description": "A client-side-only page to allow for calling an arbitrary contract method from a local Metamask wallet",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Blockade Games",
+  "license": "MIT",
+  "dependencies": {
+    "http-server": "^0.12.3",
+    "web3": "^1.2.11"
+  }
+}

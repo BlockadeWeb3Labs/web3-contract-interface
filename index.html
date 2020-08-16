@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta http-equiv="X-UA-Compatible" content="ie=edge">
+	<title>Web3 Contract Interface</title>
+	<script src="./node_modules/web3/dist/web3.min.js"></script>
+	<style>
+		.container {
+			display: flex;
+		}
+
+		.container div {
+			margin: 10px;
+		}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div>
+			<h1>Smart Contract Interface</h1>
+
+			<p>
+				<label for="contract">Contract Address</label><br />
+				<input id="contract" type="text" size="50">
+			</p>
+
+			<p>
+				<label for="abi">Contract ABI (JSON)</label><br />
+				<textarea name="abi" id="abi" cols="50" rows="8">{}</textarea>
+			</p>
+
+			<p>
+				<strong>Chain ID:</strong> <span id="info-chain-id"></span><br />
+				<strong>Latest Block #:</strong> <span id="info-block-number"></span><br />
+				<strong>Protocol Version:</strong> <span id="info-protocol"></span><br />
+				<strong>Gas Price:</strong> <span id="info-gas-price"></span><br />
+				<strong>Your Address:</strong> <small id="info-address"></small>
+			</p>
+		</div>
+
+		<div>
+			<h1>Transaction Information</h1>
+
+			<p>
+				<label for="method">Method</label><br />
+				<input id="method" type="text" size="50">
+			</p>
+
+			<p>
+				<label for="values">Parameters (array)</label><br />
+				<textarea name="values" id="values" cols="50" rows="8">[]</textarea>
+			</p>
+
+			<p>
+				<button id="button" onClick="sendTx()">Send Transaction</button>
+			</p>
+
+			<p>
+				<strong>Result:</strong><br />
+				<span id="result">No transaction sent yet</span>
+			</p>
+
+		</div>
+	</div>
+
+	<script>
+		// Pull from local storage if previous values exist
+		document.getElementById('contract').value = localStorage.getItem('contract');
+		document.getElementById('method').value = localStorage.getItem('method');
+		document.getElementById('abi').value = localStorage.getItem('abi') || '{}';
+		document.getElementById('values').value = localStorage.getItem('values') || '[]';
+
+		if (window.ethereum) {
+			window.web3 = new Web3(window.ethereum);
+			window.ethereum.enable();
+		} else {
+			alert("Web3 is not injected.");
+		}
+
+		web3.eth.getProtocolVersion().then(function(protocolVersion) {
+			document.getElementById('info-protocol').innerHTML = protocolVersion;
+		});
+
+		web3.eth.getGasPrice().then(function(gasPrice) {
+			document.getElementById('info-gas-price').innerHTML = web3.utils.fromWei(gasPrice, 'gwei') + " gwei";
+		});
+
+		web3.eth.getBlockNumber().then(function(blockNumber) {
+			document.getElementById('info-block-number').innerHTML = blockNumber;
+		});
+
+		web3.eth.getChainId().then(function(chainId) {
+			document.getElementById('info-chain-id').innerHTML = chainId;
+		});
+
+		var account;
+		web3.eth.requestAccounts().then(function(accounts) {
+			account = accounts[0];
+			document.getElementById('info-address').innerHTML = accounts[0];
+		});
+
+		function sendTx() {
+			if (!account) {
+				alert("No account approved to interact with this page");
+				return;
+			}
+
+			let contract = document.getElementById('contract').value;
+			let abi = document.getElementById('abi').value;
+			let method = document.getElementById('method').value;
+			let values = document.getElementById('values').value;
+
+			try {
+				abi = JSON.parse(abi);
+			} catch (ex) {
+				alert("Invalid JSON for ABI");
+				return;
+			}
+
+			try {
+				values = JSON.parse(values);
+			} catch (ex) {
+				alert("Invalid JSON for method parameters");
+				return;
+			}
+
+			// Store info locally for follow-up calls
+			localStorage.setItem('contract', contract);
+			localStorage.setItem('abi', JSON.stringify(abi));
+			localStorage.setItem('method', method);
+			localStorage.setItem('values', JSON.stringify(values));
+
+			try {
+				let contractWeb3 = new web3.eth.Contract(abi, contract, {
+					'from' : account
+				});
+
+				for (let func of abi) {
+					if (
+						func.hasOwnProperty('type') &&
+						func.type === 'function' &&
+						(func.stateMutability === 'view' || func.stateMutability === 'pure') &&
+						func.name === method
+					) {
+						document.getElementById('result').innerHTML = `Calling method ${method}...`;
+						contractWeb3.methods[method](...values).call((err, res) => {
+							console.log(...arguments);
+							document.getElementById('result').innerHTML = res;
+						});
+						return;
+					} else if (
+						func.hasOwnProperty('type') &&
+						func.type === 'function' &&
+						(func.stateMutability === 'payable' || func.stateMutability === 'nonpayable') &&
+						func.name === method
+					) {
+						document.getElementById('result').innerHTML = `Sending tx: ${method}...`;
+						contractWeb3.methods[method](...values).send()
+							.on('transactionHash', function(hash){
+								document.getElementById('result').innerHTML = `Submitted, tx hash ${hash}...`;
+							})
+							.on('receipt', function(receipt){
+								document.getElementById('result').innerHTML = "<pre>" + JSON.stringify(receipt, null, 2) + "</pre>";
+							})
+							.on('error', function(error, receipt) {
+								document.getElementById('result').innerHTML = "Error -- " + err + " -- Receipt -- " + "<pre>" + JSON.stringify(receipt, null, 2) + "</pre>";
+							});
+						return;
+					}
+				}
+				
+			} catch (ex) {
+				console.error(ex);
+				document.getElementById('result').innerHTML = String(ex);
+				return;
+			}
+		}
+	</script>
+</body>
+</html>
