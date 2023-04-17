@@ -54,6 +54,11 @@
 			</p>
 
 			<p>
+				<label for="value">Value (Wei)</label><br />
+				<input id="value" type="text" size="50">
+			</p>
+
+			<p>
 				<button id="button" onClick="sendTx()">Send Transaction</button>
 			</p>
 
@@ -69,6 +74,7 @@
 		// Pull from local storage if previous values exist
 		document.getElementById('contract').value = localStorage.getItem('contract');
 		document.getElementById('method').value = localStorage.getItem('method');
+		document.getElementById('value').value = localStorage.getItem('value');
 		document.getElementById('abi').value = localStorage.getItem('abi') || '{}';
 		document.getElementById('values').value = localStorage.getItem('values') || '[]';
 
@@ -117,6 +123,7 @@
 			let contract = document.getElementById('contract').value;
 			let abi = document.getElementById('abi').value;
 			let method = document.getElementById('method').value;
+			let value = document.getElementById('value').value;
 			let values = document.getElementById('values').value;
 
 			try {
@@ -138,6 +145,7 @@
 			localStorage.setItem('abi', JSON.stringify(abi));
 			localStorage.setItem('method', method);
 			localStorage.setItem('values', JSON.stringify(values));
+			localStorage.setItem('value', value);
 
 			try {
 				let contractWeb3 = new web3.eth.Contract(abi, contract, {
@@ -163,7 +171,10 @@
 						func.name === method
 					) {
 						document.getElementById('result').innerHTML = `Sending tx: ${method}...`;
-						contractWeb3.methods[method](...values).send()
+
+						value = value ? {value} : null;
+
+						contractWeb3.methods[method](...values).send(value)
 							.on('transactionHash', function(hash){
 								document.getElementById('result').innerHTML = `Submitted, tx hash ${hash}...`;
 							})
